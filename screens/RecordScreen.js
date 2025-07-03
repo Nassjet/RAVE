@@ -8,7 +8,8 @@ export default function RecordScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordings, setRecordings] = useState([]);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const recordingRef = useRef(null);
+
+  const recordingRef = useRef(null); // utilisation de useRef pour évite re-render l'écran quand on a finit d'enregistrer 
   const soundRef = useRef(null);
   const intervalRef = useRef(null);
 
@@ -26,7 +27,7 @@ export default function RecordScreen() {
       Alert.alert('Permissions requises', 'Cette application a besoin des permissions microphone');
       return false;
     }
-    await Audio.setAudioModeAsync({
+    await Audio.setAudioModeAsync({ //nécessaire pour autoriser l'enregistrement et faire écouter le son meme en mode silencieux
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
     });
@@ -39,20 +40,10 @@ export default function RecordScreen() {
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      // Arrêter tout son en cours
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
-
-      // Préparer l'enregistrement
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
+      
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync(
-        Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY
+        Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY //permet d'enregistrer le son en très bonne qualité (cf la doc de expo-av)
       );
       await recording.startAsync();
 
@@ -69,6 +60,75 @@ export default function RecordScreen() {
       console.error('Erreur démarrage enregistrement:', error);
       Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
     }
+  };
+
+  const askNameRecord = (fileUri, duration) => {
+    Alert.prompt(
+      'Nom de l\'enregistrement',
+      'Donnez un nom unique à votre enregistrement :',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+          onPress: () => {
+            // Générer un nom unique par défaut si annulation
+            const defaultName = generateUniqueName('Enregistrement');
+            setRecordings(prev => [...prev, {
+              uri: fileUri,
+              name: defaultName,
+              duration: duration,
+            }]);
+          }
+        },
+        {
+          text: 'OK',
+          onPress: (name) => {
+            const recordingName = name.trim();
+
+            // Vérifier si le nom existe déjà
+            if (recordingName && isNameUnique(recordingName)) {
+              setRecordings(prev => [...prev, {
+                uri: fileUri,
+                name: recordingName,
+                duration: duration,
+              }]);
+            } else {
+              // Si nom existe déjà ou est vide, on redemande
+              Alert.alert(
+                'Nom invalide',
+                recordingName ?
+                  'Ce nom est déjà utilisé. Choisissez un nom unique.' :
+                  'Le nom ne peut pas être vide.',
+                [
+                  { text: 'OK', onPress: () => askNameRecord(fileUri, duration) }
+                ]
+              );
+            }
+          }
+        }
+      ],
+      'plain-text',
+      '',
+      'default'
+    );
+  };
+
+  // Vérifie si le nom est unique
+  const isNameUnique = (name) => {
+    return !recordings.some(rec => rec.name.toLowerCase() === name.toLowerCase());
+  };
+
+  // Génère un nom unique par défaut
+  const generateUniqueName = (baseName) => {
+    let name = baseName;
+    let counter = 1;
+
+    while (!isNameUnique(name)) {
+      name = `${baseName}_${counter}`;
+      counter++;
+    }
+
+    return name;
   };
 
   // Arrêter l'enregistrement
@@ -89,12 +149,7 @@ export default function RecordScreen() {
         to: newPath,
       });
 
-      // Ajouter à la liste des enregistrements
-      setRecordings(prev => [...prev, {
-        uri: newPath,
-        name: fileName,
-        duration: recordingDuration,
-      }]);
+      askNameRecord(newPath, recordingDuration);
 
       setIsRecording(false);
       recordingRef.current = null;
@@ -107,20 +162,15 @@ export default function RecordScreen() {
   // Jouer un enregistrement
   const playRecording = async (uri) => {
     try {
-      // Arrêter tout son en cours
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-      }
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      soundRef.current = sound;
+      await sound.playAsync();
 
-      // Configurer et jouer
+      // Configurer et jouer (sans ça le son est très bas, même à fond)
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
       });
-
-      const { sound } = await Audio.Sound.createAsync({ uri });
-      soundRef.current = sound;
-      await sound.playAsync();
 
       // Gérer la fin de lecture
       sound.setOnPlaybackStatusUpdate(async (status) => {
@@ -223,7 +273,7 @@ export default function RecordScreen() {
               <View style={styles.recordingItem}>
                 <View style={styles.recordingInfo}>
                   <Text style={styles.recordingName} numberOfLines={1}>
-                    Enregistrement {index + 1}
+                    {item.name}
                   </Text>
                   <Text style={styles.recordingDuration}>
                     {formatTime(item.duration)}

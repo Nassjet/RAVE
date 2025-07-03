@@ -20,6 +20,8 @@
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-pager-view": "^6.8.1",
+    "react-native-tab-view": "^4.1.2",
     "react-redux": "^9.2.0",
     "redux-persist": "^6.0.0"
   },

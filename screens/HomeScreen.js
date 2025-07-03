@@ -77,7 +77,7 @@ export default function HomeScreen() {
           disabled={loading}
         />
 
-        {loading && <ActivityIndicator style={styles.loader} size="large" />} {/* petit loader si le temps de chargement est long */}
+        {loading && <ActivityIndicator style={styles.loader} size="large" />}
         {connectionStatus !== '' && (
           <Text style={styles.statusText}>{connectionStatus}</Text>
         )}

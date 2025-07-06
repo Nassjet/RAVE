@@ -3,8 +3,6 @@ import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 
-
-
 const audioSlice = createSlice({
   name: 'audio',
   initialState: {
@@ -19,6 +17,7 @@ const audioSlice = createSlice({
     }
   }
 });
+
 const serverSlice = createSlice({
   name: 'server',
   initialState: {

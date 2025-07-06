@@ -95,7 +95,6 @@ Indicateur de chargement (`ActivityIndicator`) durant le traitement.
 
 ```
 📁 components/
-│   └── Recording.js           ← Sélection du modèle
 │   └── TypeSounds.js           ← Sélection du modèle
 📁 screens/
 │   ├── HomeScreen.js           ← Connexion serveur

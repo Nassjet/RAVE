@@ -4,9 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
 
 
-// ─────────────────────────────────────────────
-// 🎙️ audioSlice minimal
-// Stocke les clips audio enregistrés localement
+
 const audioSlice = createSlice({
   name: 'audio',
   initialState: {
@@ -21,10 +19,6 @@ const audioSlice = createSlice({
     }
   }
 });
-
-// ─────────────────────────────────────────────
-// 🌐 serverSlice minimal
-// Stocke les infos de connexion au serveur
 const serverSlice = createSlice({
   name: 'server',
   initialState: {
@@ -41,9 +35,7 @@ const serverSlice = createSlice({
   }
 });
 
-// ─────────────────────────────────────────────
 // Configuration Redux + Redux Persist
-
 const rootReducer = combineReducers({
   audio: audioSlice.reducer,
   server: serverSlice.reducer
@@ -77,9 +69,6 @@ export const store = configureStore({
 
 
 export const persistor = persistStore(store);
-
-// ─────────────────────────────────────────────
-// Export des actions (à importer dans tes screens)
 
 export const { addClip, removeClip } = audioSlice.actions;
 export const { setIP, setPort } = serverSlice.actions;

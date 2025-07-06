@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { FlatList } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
-
+import { addClip, removeClip } from '../store/redux'; 
 export default function RecordScreen() {
+  const dispatch = useDispatch();
   const [isRecording, setIsRecording] = useState(false);
-  const [recordings, setRecordings] = useState([]);
+  const recordings = useSelector(state => state.audio.clips);
   const [recordingDuration, setRecordingDuration] = useState(0);
 
   const recordingRef = useRef(null); // utilisation de useRef pour évite re-render l'écran quand on a finit d'enregistrer 
@@ -40,7 +42,7 @@ export default function RecordScreen() {
       const hasPermission = await requestPermissions();
       if (!hasPermission) return;
 
-      
+
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync(
         Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY //permet d'enregistrer le son en très bonne qualité (cf la doc de expo-av)
@@ -71,29 +73,27 @@ export default function RecordScreen() {
           text: 'Annuler',
           style: 'cancel',
           onPress: () => {
-            // Générer un nom unique par défaut si annulation
             const defaultName = generateUniqueName('Enregistrement');
-            setRecordings(prev => [...prev, {
+            dispatch(addClip({
+              id: Date.now().toString(),
               uri: fileUri,
               name: defaultName,
               duration: duration,
-            }]);
+            }));
           }
         },
         {
           text: 'OK',
           onPress: (name) => {
             const recordingName = name.trim();
-
-            // Vérifier si le nom existe déjà
             if (recordingName && isNameUnique(recordingName)) {
-              setRecordings(prev => [...prev, {
+              dispatch(addClip({
+                id: Date.now().toString(),
                 uri: fileUri,
                 name: recordingName,
                 duration: duration,
-              }]);
+              }));
             } else {
-              // Si nom existe déjà ou est vide, on redemande
               Alert.alert(
                 'Nom invalide',
                 recordingName ?
@@ -106,10 +106,7 @@ export default function RecordScreen() {
             }
           }
         }
-      ],
-      'plain-text',
-      '',
-      'default'
+      ]
     );
   };
 
@@ -160,7 +157,7 @@ export default function RecordScreen() {
   };
 
   // Jouer un enregistrement
-  const playRecording = async (uri) => {
+   const playRecording = async (uri) => {
     try {
       const { sound } = await Audio.Sound.createAsync({ uri });
       soundRef.current = sound;
@@ -185,26 +182,21 @@ export default function RecordScreen() {
       Alert.alert('Erreur', 'Impossible de lire l\'enregistrement');
     }
   };
-  const deleteRecording = async (uri, index) => {
+  
+  const deleteRecording = async (uri, id) => { // Maintenant on utilise l'id au lieu de l'index
     try {
-      // Arrêter la lecture si c'est l'enregistrement en cours
       if (soundRef.current) {
         await soundRef.current.unloadAsync();
         soundRef.current = null;
       }
 
-      // Supprimer le fichier
       await FileSystem.deleteAsync(uri, { idempotent: true });
-
-      // Mettre à jour la liste
-      setRecordings(prev => prev.filter((_, i) => i !== index));
-
+      dispatch(removeClip(id));
     } catch (error) {
       console.error('Erreur suppression:', error);
       Alert.alert('Erreur', 'Impossible de supprimer l\'enregistrement');
     }
   };
-
   // Confirmation de suppression
   const confirmDelete = (uri, index) => {
     Alert.alert(
@@ -269,7 +261,7 @@ export default function RecordScreen() {
           <FlatList
             data={recordings}
             keyExtractor={(_, index) => index.toString()}
-            renderItem={({ item, index }) => (
+            renderItem={({ item }) => (
               <View style={styles.recordingItem}>
                 <View style={styles.recordingInfo}>
                   <Text style={styles.recordingName} numberOfLines={1}>
@@ -290,7 +282,7 @@ export default function RecordScreen() {
 
                   <TouchableOpacity
                     style={[styles.actionButton, styles.deleteButton]}
-                    onPress={() => confirmDelete(item.uri, index)}
+                    onPress={() => confirmDelete(item.uri, item.id)} 
                   >
                     <Text style={styles.actionButtonText}>Supprimer</Text>
                   </TouchableOpacity>
